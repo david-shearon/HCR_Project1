@@ -1,0 +1,12 @@
+<launch>
+    <arg name="world_file" default="$find deliverable_two)/worlds/largemaze-triton-lidar.world"/>
+
+    <include file="$(find stingray_sim)/launch/wall_following_v1.launch"/>
+	
+    <node
+	pkg="deliverable_two"
+	name="teleop"
+	type="wall_follow.py"
+	output="screen"
+    />
+</launch>
