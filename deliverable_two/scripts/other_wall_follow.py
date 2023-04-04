@@ -19,7 +19,7 @@ from gazebo_msgs.srv import SetModelState
 
 rospy.init_node("teleop_robot")
 pub = rospy.Publisher("/triton_lidar/vel_cmd", Twist, queue_size=10)
-rate = rospy.Rate(2)
+rate = rospy.Rate(4)
 up = 0
 left = 0
 right = 0
@@ -34,7 +34,7 @@ episode_count = 0
 def get_combo(LEFT, FRONT, FRONT_RIGHT, RIGHT):
     combo_string = ""
     combo_index = 0
-    if(LEFT < 0.6):
+    if(LEFT < 0.3):
         combo_index += 0
     else:
         combo_index += 1
@@ -88,8 +88,8 @@ def check_terminal():
 
 #    dist_from_last = math.dist([last_coord_x, last_coord_y], [x, y])
     dist_from_last = np.linalg.norm(np.array((last_coord_x, last_coord_y)) - np.array((x, y)))
-   # print(dist_from_last))
-    if(dist_from_last < 0.04):
+   # print(dist_from_last)
+    if(dist_from_last < 0.01):
         print("Robot Trapped!")
         terminal_count += 1
     else:
@@ -103,7 +103,6 @@ def check_terminal():
         step_count = 0
         state_msg = ModelState()
         angle = float(random.random() * 6.28)
-        angle = 3.14
         state_msg.model_name = 'triton_lidar'
         state_msg.pose.orientation.x = 0
         state_msg.pose.orientation.y = 0
@@ -116,7 +115,7 @@ def check_terminal():
         episode_count += 1
         print("RESETTING!")
         return -5
-    elif(right < 0.20 or left < 0.6 or up < 0.3 or right > 0.7):
+    elif(right < 0.30 or left < 0.3 or up < 0.3 or right > 0.6):
         print("SHAME!")
         return -5
     elif(terminal_count == 1):
@@ -136,10 +135,9 @@ def callback(data):
         elif(curr > data.range_max):
             curr = data.range_max
 
-    right = ( sum(data.ranges[0:45]) + sum(data.ranges[340:360]) ) / 65.0
+    right = ( sum(data.ranges[0:45]) + sum(data.ranges[315:360]) ) / 90.0
     left = sum(data.ranges[124:236]) / 112.0
-    upRight = sum(data.ranges[30:70]) / 40.0
-   # upRight = min(data.ranges[40:80])
+    upRight = sum(data.ranges[15:45]) / 30.0
     up = sum(data.ranges[56:124]) / 68.0
 
 subscriber = rospy.Subscriber("/scan", LaserScan, callback)
@@ -155,12 +153,9 @@ except:
     q_table = np.zeros((542, 3))
 
 epsilon_0 = 0.98
-#epsilon_0 = 0.01
 d = 0.9
 episode_count = 0
 epsilon = 0
-learning_rate = 0.2
-discount_factor = 0.8
 
 rate.sleep()
 rate.sleep()
@@ -177,24 +172,24 @@ while not rospy.is_shutdown():
     epsilon = epsilon_0 * pow(d, episode_count)
 
     combo_index = get_combo(left, up, upRight, right)       # get index of current situation
-    if(combo_index == 516):
-        print(combo_index)
     
     if(r < epsilon):
         #explore
         action_index = random.randrange(3)                  # Choose random action
+        learning_rate = 0.2
+        discount_factor = 0.8
 
         if(action_index == 0):
             print("RANDOM!\t\tTurning Left!")
-            msg.angular.z = 0.5
-            msg.linear.y = 0.1
+            msg.angular.z = 0.4
+            msg.linear.y = 0.075
         elif(action_index == 2):
             print("RANDOM\t\tTurning Right!")
-            msg.angular.z = -0.5
-            msg.linear.y = 0.1
+            msg.angular.z = -0.4
+            msg.linear.y = 0.075
         else:
             print("RANDOM\t\tGoing Straight!")
-            msg.linear.y = 0.4
+            msg.linear.y = 0.3
 
     else:
         #exploit
@@ -203,19 +198,19 @@ while not rospy.is_shutdown():
             #go straight
             action_index = 1
             print("COMPUTED\tGoing Straight!")
-            msg.linear.y = 0.4
+            msg.linear.y = 0.3
         elif(max_option == q_table[combo_index, 0]):
             action_index = 0
             print("COMPUTED\tTurning Left!")
-            msg.angular.z = 0.5
-            msg.linear.y = 0.1
+            msg.angular.z = 0.4
+            msg.linear.y = 0.075
            #turn left
         elif(max_option == q_table[combo_index, 2]):
             #turn right
             action_index = 2
             print("COMPUTED\tTurning Right!")
-            msg.angular.z = -0.5
-            msg.linear.y = 0.1
+            msg.angular.z = -0.4
+            msg.linear.y = 0.075
 
     pub.publish(msg)
     try:
