@@ -102,7 +102,7 @@ def check_terminal():
     # Check for reset and reset if needed
     if(terminal_count >= 2 or z > 1):
         print("Step count: ", step_count)
-        np.savetxt("/q_table.csv", q_table, delimiter=",")
+        np.savetxt("q_table.csv", q_table, delimiter=",")
         step_count = 0
         state_msg = ModelState()
         angle = float(random.random() * 6.28)
@@ -149,7 +149,7 @@ subscriber = rospy.Subscriber("/scan", LaserScan, callback)
 
 msg = Twist()
 try:
-    q_table = np.genfromtxt(fname = "/q_table.csv", delimiter = ',')
+    q_table = np.genfromtxt(fname = "q_table.csv", delimiter = ',')
     print("Using saved q_table")
     print(np.shape(q_table))
     print(q_table)
@@ -228,4 +228,4 @@ while not rospy.is_shutdown():
     if(step_count > max_step):
         max_step = step_count
         print("New record! Max step is now: ", max_step)
-        np.savetxt("/q_table.csv", q_table, delimiter=",")
+        np.savetxt("q_table.csv", q_table, delimiter=",")
