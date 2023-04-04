@@ -6,7 +6,7 @@
     <node
 	pkg="deliverable_two"
 	name="teleop"
-	type="wall_follow.py"
+	type="wall_follow_explore.py"
 	output="screen"
     />
 </launch>

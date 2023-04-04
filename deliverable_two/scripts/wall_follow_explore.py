@@ -31,6 +31,7 @@ last_coord_y = 0
 max_step = 0
 episode_count = 0
 
+# Produce a state index for use in the Q-Table
 def get_combo(LEFT, FRONT, FRONT_RIGHT, RIGHT):
     combo_string = ""
     combo_index = 0
@@ -62,6 +63,7 @@ def get_combo(LEFT, FRONT, FRONT_RIGHT, RIGHT):
         combo_index += 500
     return combo_index
 
+# Check terminal cases, and produce reward
 def check_terminal():
     rospy.wait_for_service('/gazebo/get_model_state')
     x = 0
@@ -86,9 +88,9 @@ def check_terminal():
     except:
         print("error")
 
-#    dist_from_last = math.dist([last_coord_x, last_coord_y], [x, y])
     dist_from_last = np.linalg.norm(np.array((last_coord_x, last_coord_y)) - np.array((x, y)))
-   # print(dist_from_last))
+
+    # If robot trapped
     if(dist_from_last < 0.04):
         print("Robot Trapped!")
         terminal_count += 1
@@ -97,13 +99,14 @@ def check_terminal():
         last_coord_x = x
         last_coord_y = y
 
+    # Check for reset and reset if needed
     if(terminal_count >= 2 or z > 1):
         print("Step count: ", step_count)
-        np.savetxt("q_table.csv", q_table, delimiter=",")
+        np.savetxt("/q_table.csv", q_table, delimiter=",")
         step_count = 0
         state_msg = ModelState()
         angle = float(random.random() * 6.28)
-        angle = 3.14
+
         state_msg.model_name = 'triton_lidar'
         state_msg.pose.orientation.x = 0
         state_msg.pose.orientation.y = 0
@@ -124,6 +127,7 @@ def check_terminal():
     print("GOOD BOY!")
     return 20
 
+# Set range values from LiDAR
 def callback(data):
     global up
     global upRight
@@ -136,17 +140,16 @@ def callback(data):
         elif(curr > data.range_max):
             curr = data.range_max
 
-    right = ( sum(data.ranges[0:45]) + sum(data.ranges[340:360]) ) / 65.0
+    right = ( sum(data.ranges[0:30]) + sum(data.ranges[330:360]) ) / 60.0
     left = sum(data.ranges[124:236]) / 112.0
     upRight = sum(data.ranges[30:70]) / 40.0
-   # upRight = min(data.ranges[40:80])
     up = sum(data.ranges[56:124]) / 68.0
 
 subscriber = rospy.Subscriber("/scan", LaserScan, callback)
 
 msg = Twist()
 try:
-    q_table = np.genfromtxt(fname = "q_table.csv", delimiter = ',')
+    q_table = np.genfromtxt(fname = "/q_table.csv", delimiter = ',')
     print("Using saved q_table")
     print(np.shape(q_table))
     print(q_table)
@@ -155,7 +158,6 @@ except:
     q_table = np.zeros((542, 3))
 
 epsilon_0 = 0.98
-#epsilon_0 = 0.01
 d = 0.9
 episode_count = 0
 epsilon = 0
@@ -169,16 +171,12 @@ while not rospy.is_shutdown():
     global msg
     global pub
     global q_table
-  #  global step_count
-
     msg = Twist()
 
     r = random.random()
     epsilon = epsilon_0 * pow(d, episode_count)
 
     combo_index = get_combo(left, up, upRight, right)       # get index of current situation
-    if(combo_index == 516):
-        print(combo_index)
     
     if(r < epsilon):
         #explore
@@ -230,4 +228,4 @@ while not rospy.is_shutdown():
     if(step_count > max_step):
         max_step = step_count
         print("New record! Max step is now: ", max_step)
-        np.savetxt("q_table.csv", q_table, delimiter=",")
+        np.savetxt("/q_table.csv", q_table, delimiter=",")
